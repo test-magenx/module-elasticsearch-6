@@ -3,10 +3,12 @@
  * Copyright © Magento, Inc. All rights reserved.
  * See COPYING.txt for license details.
  */
+
 namespace Magento\Elasticsearch6\Test\Unit\Model\Client;
 
 use Magento\Elasticsearch\Model\Client\Elasticsearch as ElasticsearchClient;
 use Magento\Framework\TestFramework\Unit\Helper\ObjectManager as ObjectManagerHelper;
+use Magento\Elasticsearch6\Model\Client\Elasticsearch;
 
 /**
  * Class ElasticsearchTest
@@ -41,30 +43,34 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
     protected function setUp()
     {
         $this->elasticsearchClientMock = $this->getMockBuilder(\Elasticsearch\Client::class)
-            ->setMethods([
-                'indices',
-                'ping',
-                'bulk',
-                'search',
-                'scroll',
-                'suggest',
-                'info',
-            ])
+            ->setMethods(
+                [
+                    'indices',
+                    'ping',
+                    'bulk',
+                    'search',
+                    'scroll',
+                    'suggest',
+                    'info',
+                ]
+            )
             ->disableOriginalConstructor()
             ->getMock();
         $this->indicesMock = $this->getMockBuilder(\Elasticsearch\Namespaces\IndicesNamespace::class)
-            ->setMethods([
-                'exists',
-                'getSettings',
-                'create',
-                'delete',
-                'putMapping',
-                'deleteMapping',
-                'stats',
-                'updateAliases',
-                'existsAlias',
-                'getAlias',
-            ])
+            ->setMethods(
+                [
+                    'exists',
+                    'getSettings',
+                    'create',
+                    'delete',
+                    'putMapping',
+                    'deleteMapping',
+                    'stats',
+                    'updateAliases',
+                    'existsAlias',
+                    'getAlias',
+                ]
+            )
             ->disableOriginalConstructor()
             ->getMock();
         $this->elasticsearchClientMock->expects($this->any())
@@ -79,7 +85,7 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
 
         $this->objectManager = new ObjectManagerHelper($this);
         $this->model = $this->objectManager->getObject(
-            \Magento\Elasticsearch6\Model\Client\Elasticsearch::class,
+            Elasticsearch::class,
             [
                 'options' => $this->getOptions(),
                 'elasticsearchClient' => $this->elasticsearchClientMock
@@ -93,7 +99,7 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
     public function testConstructorOptionsException()
     {
         $result = $this->objectManager->getObject(
-            \Magento\Elasticsearch6\Model\Client\Elasticsearch::class,
+            Elasticsearch::class,
             [
                 'options' => []
             ]
@@ -113,6 +119,69 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
             ]
         );
         $this->assertNotNull($result);
+    }
+
+    /**
+     * Ensure that configuration returns correct url.
+     *
+     * @param array $options
+     * @param string $expectedResult
+     * @throws \Magento\Framework\Exception\LocalizedException
+     * @throws \ReflectionException
+     * @dataProvider getOptionsDataProvider
+     */
+    public function testBuildConfig(array $options, $expectedResult): void
+    {
+        $buildConfig = new Elasticsearch($options);
+        $config = $this->getPrivateMethod(Elasticsearch::class, 'buildConfig');
+        $result = $config->invoke($buildConfig, $options);
+        $this->assertEquals($expectedResult, $result['hosts'][0]);
+    }
+
+    /**
+     * Return private method for elastic search class.
+     *
+     * @param $className
+     * @param $methodName
+     * @return \ReflectionMethod
+     * @throws \ReflectionException
+     */
+    private function getPrivateMethod($className, $methodName)
+    {
+        $reflector = new \ReflectionClass($className);
+        $method = $reflector->getMethod($methodName);
+        $method->setAccessible(true);
+
+        return $method;
+    }
+
+    /**
+     * Get options data provider.
+     */
+    public function getOptionsDataProvider()
+    {
+        return [
+            [
+                'without_protocol' => [
+                    'hostname' => 'localhost',
+                    'port' => '9200',
+                    'timeout' => 15,
+                    'index' => 'magento2',
+                    'enableAuth' => 0,
+                ],
+                'expected_result' => 'http://localhost:9200'
+            ],
+            [
+                'with_protocol' => [
+                    'hostname' => 'https://localhost',
+                    'port' => '9200',
+                    'timeout' => 15,
+                    'index' => 'magento2',
+                    'enableAuth' => 0,
+                ],
+                'expected_result' => 'https://localhost:9200'
+            ]
+        ];
     }
 
     /**
@@ -177,10 +246,12 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
     {
         $this->indicesMock->expects($this->once())
             ->method('create')
-            ->with([
-                'index' => 'indexName',
-                'body' => [],
-            ]);
+            ->with(
+                [
+                    'index' => 'indexName',
+                    'body' => [],
+                ]
+            );
         $this->model->createIndex('indexName', []);
     }
 
@@ -266,9 +337,7 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
     {
         $this->indicesMock->expects($this->once())
             ->method('exists')
-            ->with([
-                'index' => 'indexName',
-            ])
+            ->with(['index' => 'indexName'])
             ->willReturn(true);
         $this->model->indexExists('indexName');
     }
@@ -324,10 +393,12 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
     {
         $this->indicesMock->expects($this->once())
             ->method('create')
-            ->with([
-                'index' => 'indexName',
-                'body' => [],
-            ])
+            ->with(
+                [
+                    'index' => 'indexName',
+                    'body' => [],
+                ]
+            )
             ->willThrowException(new \Exception('Something went wrong'));
         $this->model->createIndex('indexName', []);
     }
@@ -339,55 +410,57 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
     {
         $this->indicesMock->expects($this->once())
             ->method('putMapping')
-            ->with([
-                'index' => 'indexName',
-                'type' => 'product',
-                'body' => [
-                    'product' => [
-                        'properties' => [
-                            '_search' => [
-                                'type' => 'text',
-                            ],
-                            'name' => [
-                                'type' => 'text',
-                            ],
-                        ],
-                        'dynamic_templates' => [
-                            [
-                                'price_mapping' => [
-                                    'match' => 'price_*',
-                                    'match_mapping_type' => 'string',
-                                    'mapping' => [
-                                        'type' => 'float',
-                                        'store' => true,
-                                    ],
+            ->with(
+                [
+                    'index' => 'indexName',
+                    'type' => 'product',
+                    'body' => [
+                        'product' => [
+                            'properties' => [
+                                '_search' => [
+                                    'type' => 'text',
+                                ],
+                                'name' => [
+                                    'type' => 'text',
                                 ],
                             ],
-                            [
-                                'position_mapping' => [
-                                    'match' => 'position_*',
-                                    'match_mapping_type' => 'string',
-                                    'mapping' => [
-                                        'type' => 'integer',
-                                        'index' => false
+                            'dynamic_templates' => [
+                                [
+                                    'price_mapping' => [
+                                        'match' => 'price_*',
+                                        'match_mapping_type' => 'string',
+                                        'mapping' => [
+                                            'type' => 'float',
+                                            'store' => true,
+                                        ],
                                     ],
                                 ],
+                                [
+                                    'position_mapping' => [
+                                        'match' => 'position_*',
+                                        'match_mapping_type' => 'string',
+                                        'mapping' => [
+                                            'type' => 'integer',
+                                            'index' => true,
+                                        ],
+                                    ],
+                                ],
+                                [
+                                    'string_mapping' => [
+                                        'match' => '*',
+                                        'match_mapping_type' => 'string',
+                                        'mapping' => [
+                                            'type' => 'text',
+                                            'index' => true,
+                                            'copy_to' => '_search'
+                                        ],
+                                    ],
+                                ]
                             ],
-                            [
-                                'string_mapping' => [
-                                    'match' => '*',
-                                    'match_mapping_type' => 'string',
-                                    'mapping' => [
-                                        'type' => 'text',
-                                        'index' => false,
-                                        'copy_to' => '_search'
-                                    ],
-                                ],
-                            ]
                         ],
                     ],
-                ],
-            ]);
+                ]
+            );
         $this->model->addFieldsMapping(
             [
                 'name' => [
@@ -407,55 +480,57 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
     {
         $this->indicesMock->expects($this->once())
             ->method('putMapping')
-            ->with([
-                'index' => 'indexName',
-                'type' => 'product',
-                'body' => [
-                    'product' => [
-                        'properties' => [
-                            '_search' => [
-                                'type' => 'text',
-                            ],
-                            'name' => [
-                                'type' => 'text',
-                            ],
-                        ],
-                        'dynamic_templates' => [
-                            [
-                                'price_mapping' => [
-                                    'match' => 'price_*',
-                                    'match_mapping_type' => 'string',
-                                    'mapping' => [
-                                        'type' => 'float',
-                                        'store' => true,
-                                    ],
+            ->with(
+                [
+                    'index' => 'indexName',
+                    'type' => 'product',
+                    'body' => [
+                        'product' => [
+                            'properties' => [
+                                '_search' => [
+                                    'type' => 'text',
+                                ],
+                                'name' => [
+                                    'type' => 'text',
                                 ],
                             ],
-                            [
-                                'position_mapping' => [
-                                    'match' => 'position_*',
-                                    'match_mapping_type' => 'string',
-                                    'mapping' => [
-                                        'type' => 'integer',
-                                        'index' => false
+                            'dynamic_templates' => [
+                                [
+                                    'price_mapping' => [
+                                        'match' => 'price_*',
+                                        'match_mapping_type' => 'string',
+                                        'mapping' => [
+                                            'type' => 'float',
+                                            'store' => true,
+                                        ],
                                     ],
                                 ],
+                                [
+                                    'position_mapping' => [
+                                        'match' => 'position_*',
+                                        'match_mapping_type' => 'string',
+                                        'mapping' => [
+                                            'type' => 'integer',
+                                            'index' => true,
+                                        ],
+                                    ],
+                                ],
+                                [
+                                    'string_mapping' => [
+                                        'match' => '*',
+                                        'match_mapping_type' => 'string',
+                                        'mapping' => [
+                                            'type' => 'text',
+                                            'index' => true,
+                                            'copy_to' => '_search'
+                                        ],
+                                    ],
+                                ]
                             ],
-                            [
-                                'string_mapping' => [
-                                    'match' => '*',
-                                    'match_mapping_type' => 'string',
-                                    'mapping' => [
-                                        'type' => 'text',
-                                        'index' => false,
-                                        'copy_to' => '_search'
-                                    ],
-                                ],
-                            ]
                         ],
                     ],
-                ],
-            ])
+                ]
+            )
             ->willThrowException(new \Exception('Something went wrong'));
         $this->model->addFieldsMapping(
             [
@@ -475,10 +550,12 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
     {
         $this->indicesMock->expects($this->once())
             ->method('deleteMapping')
-            ->with([
-                'index' => 'indexName',
-                'type' => 'product',
-            ]);
+            ->with(
+                [
+                    'index' => 'indexName',
+                    'type' => 'product',
+                ]
+            );
         $this->model->deleteMapping(
             'indexName',
             'product'
@@ -493,10 +570,12 @@ class ElasticsearchTest extends \PHPUnit\Framework\TestCase
     {
         $this->indicesMock->expects($this->once())
             ->method('deleteMapping')
-            ->with([
-                'index' => 'indexName',
-                'type' => 'product',
-            ])
+            ->with(
+                [
+                    'index' => 'indexName',
+                    'type' => 'product',
+                ]
+            )
             ->willThrowException(new \Exception('Something went wrong'));
         $this->model->deleteMapping(
             'indexName',
